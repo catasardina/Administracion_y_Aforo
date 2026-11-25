@@ -1,0 +1,129 @@
+<div class="panel-container">
+  <!-- Cabecera del Panel -->
+  <header class="panel-header">
+    <div class="header-titles">
+      <h1>Panel de Administración y Aforo</h1>
+      <p class="subtitle">Monitoreo de entradas y asistencia en tiempo real</p>
+    </div>
+
+    <!-- Acciones: Selector de Evento y Botón Actualizar -->
+    <div class="header-actions">
+      <div class="selector-group">
+        <label for="selector-eventos">Evento:</label>
+        <select
+          id="selector-eventos"
+          #selectRef
+          [value]="eventoSeleccionadoId ?? ''"
+          (change)="seleccionarEvento(+selectRef.value)"
+          [disabled]="cargando && !resumen"
+        >
+          <option value="" disabled [selected]="!eventoSeleccionadoId">
+            -- Selecciona un evento --
+          </option>
+          @for (evento of eventos; track evento.id) {
+            <option [value]="evento.id">
+              {{ evento.nombre }}
+            </option>
+          }
+        </select>
+      </div>
+
+      <button
+        type="button"
+        class="btn-actualizar"
+        (click)="actualizarResumen()"
+        [disabled]="!eventoSeleccionadoId || cargando"
+      >
+        @if (cargando) {
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Actualizando...</span>
+        } @else {
+          <span class="btn-icon" aria-hidden="true">🔄</span>
+          <span>Actualizar</span>
+        }
+      </button>
+    </div>
+  </header>
+
+  <!-- Barra de Estado: Última Actualización Exitosa -->
+  <div class="status-bar">
+    @if (ultimaActualizacion) {
+      <span class="status-timestamp">
+        Última actualización exitosa: <strong>{{ ultimaActualizacion }}</strong>
+      </span>
+    }
+  </div>
+
+  <!-- Mensaje de Error (si la API falla, conservando los datos previos) -->
+  @if (mensajeError) {
+    <div class="alert alert-error" role="alert">
+      <span class="alert-icon" aria-hidden="true">⚠️</span>
+      <div class="alert-content">
+        <p class="alert-title">Problema de conexión</p>
+        <p class="alert-message">{{ mensajeError }}</p>
+        @if (resumen) {
+          <small class="alert-note">Se mantienen en pantalla los últimos datos obtenidos exitosamente.</small>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Contenedor Principal: Indicadores, Carga Inicial o Ausencia de Datos -->
+  @if (cargando && !resumen) {
+    <!-- Estado de Carga Inicial -->
+    <div class="state-container loading-state">
+      <div class="loader" aria-hidden="true"></div>
+      <p>Cargando información del evento...</p>
+    </div>
+  } @else if (resumen) {
+    <!-- Cuatro Tarjetas de Indicadores Solicitadas -->
+    <main class="cards-grid">
+      <!-- Tarjeta 1: Capacidad -->
+      <article class="card card-capacidad">
+        <div class="card-header">
+          <h3>Capacidad Total</h3>
+          <span class="card-icon" aria-hidden="true">🏛️</span>
+        </div>
+        <p class="card-value">{{ resumen.capacidad }}</p>
+        <p class="card-desc">Capacidad máxima del recinto</p>
+      </article>
+
+      <!-- Tarjeta 2: Emitidas -->
+      <article class="card card-emitidas">
+        <div class="card-header">
+          <h3>Entradas Emitidas</h3>
+          <span class="card-icon" aria-hidden="true">🎟️</span>
+        </div>
+        <p class="card-value">{{ resumen.emitidas }}</p>
+        <p class="card-desc">Total de tickets vendidos</p>
+      </article>
+
+      <!-- Tarjeta 3: Utilizadas -->
+      <article class="card card-utilizadas">
+        <div class="card-header">
+          <h3>Entradas Utilizadas</h3>
+          <span class="card-icon" aria-hidden="true">🚶</span>
+        </div>
+        <p class="card-value">{{ resumen.utilizadas }}</p>
+        <p class="card-desc">Personas que ya ingresaron</p>
+      </article>
+
+      <!-- Tarjeta 4: Disponibles -->
+      <article class="card card-disponibles">
+        <div class="card-header">
+          <h3>Entradas Disponibles</h3>
+          <span class="card-icon" aria-hidden="true">🎫</span>
+        </div>
+        <p class="card-value">{{ resumen.disponibles }}</p>
+        <p class="card-desc">Cupos que aún pueden venderse</p>
+      </article>
+    </main>
+  } @else {
+    <!-- Estado de Ausencia de Datos (ningún evento seleccionado aún) -->
+    <div class="state-container empty-state">
+      <span class="empty-icon" aria-hidden="true">📊</span>
+      <h2>Ningún evento seleccionado</h2>
+      <p>Selecciona un evento en el menú superior para consultar y monitorear el aforo en tiempo real.</p>
+    </div>
+  }
+</div>

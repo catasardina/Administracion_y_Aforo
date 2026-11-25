@@ -1,0 +1,54 @@
+sequenceDiagram
+    autonumber
+    actor Admin as Administrador
+    participant Panel as Panel Angular
+    participant GW as Gateway
+    participant API as API de Entradas
+
+    %% Fase 1: Carga y selección de evento
+    rect rgb(240, 249, 255)
+        Note over Admin,API: Carga inicial de eventos disponibles
+        Admin->>Panel: Abre el panel de aforo
+        Panel->>GW: GET /api/eventos
+        GW->>API: GET /api/eventos
+        API-->>GW: 200 OK [{"id": 1, "nombre": "Festival Norte", ...}]
+        GW-->>Panel: 200 OK [{"id": 1, "nombre": "Festival Norte", ...}]
+        Panel-->>Admin: Muestra la lista de eventos en el selector
+    end
+
+    rect rgb(255, 255, 255)
+        Note over Admin,API: Selección de un evento y primera consulta de aforo
+        Admin->>Panel: Selecciona un evento (id = 1)
+        Panel->>Panel: Activa indicador de carga (cargando = true)
+        Panel->>GW: GET /api/entradas/eventos/1/resumen
+        GW->>API: GET /api/entradas/eventos/1/resumen
+        API-->>GW: 200 OK {"evento_id": 1, "capacidad": 100, "emitidas": 1, "utilizadas": 0, "disponibles": 99}
+        GW-->>Panel: 200 OK {"evento_id": 1, "capacidad": 100, "emitidas": 1, "utilizadas": 0, "disponibles": 99}
+        Panel->>Panel: Guarda resumen, actualiza timestamp (ultimaActualizacion) y desactiva carga
+        Panel-->>Admin: Muestra las 4 tarjetas (Capacidad: 100, Emitidas: 1, Utilizadas: 0, Disponibles: 99)
+    end
+
+    %% Fase 2: Ciclo de consulta periódica (Loop) con manejo de respuestas (Alt)
+    loop Consulta periódica cada 10 segundos (o clic en Actualizar)
+        Panel->>GW: GET /api/entradas/eventos/1/resumen
+        GW->>API: GET /api/entradas/eventos/1/resumen
+
+        alt Respuesta correcta (200 OK)
+            API-->>GW: 200 OK {"evento_id": 1, "capacidad": 100, "emitidas": 2, "utilizadas": 1, "disponibles": 98}
+            GW-->>Panel: 200 OK {"evento_id": 1, "capacidad": 100, "emitidas": 2, "utilizadas": 1, "disponibles": 98}
+            Panel->>Panel: Actualiza 'resumen', actualiza 'ultimaActualizacion' y limpia 'mensajeError'
+            Panel-->>Admin: Refresca las 4 tarjetas con las nuevas cifras en tiempo real
+        else Error de comunicación / API inaccesible (4xx, 5xx o timeout)
+            API-->>GW: Error 500 / Conexión rechazada
+            GW-->>Panel: Error en la respuesta
+            Panel->>Panel: Registra 'mensajeError' y CONSERVA el 'resumen' previo (sin inventar cifras)
+            Panel-->>Admin: Muestra mensaje de error visual manteniendo visibles las tarjetas anteriores
+        end
+    end
+
+    %% Fase 3: Detención de consultas
+    rect rgb(254, 242, 242)
+        Note over Admin,Panel: Salida del panel
+        Admin->>Panel: Navega fuera del panel / Cierra la vista
+        Panel->>Panel: Detiene las consultas periódicas (unsubscribe / ngOnDestroy)
+    end
